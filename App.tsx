@@ -60,7 +60,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (mode === GameMode.MULTI_LOBBY && !peer) {
-      const p = new Peer();
+      // Use a custom alphabet to avoid confusing characters like 0, O, 1, I, l
+      const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      let shortId = '';
+      for (let i = 0; i < 6; i++) {
+        shortId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+      }
+      
+      const p = new Peer(shortId);
       p.on('open', (id: string) => setMyId(id));
       p.on('connection', (connection: any) => {
         if (connRef.current) {
@@ -81,20 +88,30 @@ const App: React.FC = () => {
   const connRef = useRef<any>(null);
   useEffect(() => { connRef.current = conn; }, [conn]);
 
+  const handleMoveRef = useRef(handleMove);
+  useEffect(() => {
+    handleMoveRef.current = handleMove;
+  }, [handleMove]);
+
+  const resetGameRef = useRef(resetGame);
+  useEffect(() => {
+    resetGameRef.current = resetGame;
+  }, [resetGame]);
+
   const setupConnection = (c: any) => {
     c.on('open', () => {
       setConn(c);
       setConnected(true);
       setIsConnecting(false);
       setMode(GameMode.MULTI_GAME);
-      resetGame();
+      resetGameRef.current();
     });
     c.on('data', (data: any) => {
       const msg = data as PeerMessage;
       if (msg.type === 'MOVE' && typeof msg.index === 'number') {
-        handleMove(msg.index, true);
+        handleMoveRef.current(msg.index, true);
       } else if (msg.type === 'RESET') {
-        resetGame(true);
+        resetGameRef.current(true);
       }
     });
     c.on('close', () => {
@@ -261,9 +278,9 @@ const App: React.FC = () => {
           <input 
             type="text" 
             placeholder="Enter friend's code..." 
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors uppercase"
             value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
+            onChange={(e) => setTargetId(e.target.value.toUpperCase())}
           />
           <button 
             onClick={connectToPeer}
