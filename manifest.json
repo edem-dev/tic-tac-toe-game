@@ -3,7 +3,7 @@
   "name": "Tic-Tac-Toe Pro",
   "short_name": "Ticky",
   "description": "Premium Tic-Tac-Toe with AI and Multiplayer",
-  "start_url": "./",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#4f46e5",
