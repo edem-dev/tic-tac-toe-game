@@ -88,30 +88,20 @@ const App: React.FC = () => {
   const connRef = useRef<any>(null);
   useEffect(() => { connRef.current = conn; }, [conn]);
 
-  const handleMoveRef = useRef(handleMove);
-  useEffect(() => {
-    handleMoveRef.current = handleMove;
-  }, [handleMove]);
-
-  const resetGameRef = useRef(resetGame);
-  useEffect(() => {
-    resetGameRef.current = resetGame;
-  }, [resetGame]);
-
   const setupConnection = (c: any) => {
     c.on('open', () => {
       setConn(c);
       setConnected(true);
       setIsConnecting(false);
       setMode(GameMode.MULTI_GAME);
-      resetGameRef.current();
+      resetGame();
     });
     c.on('data', (data: any) => {
       const msg = data as PeerMessage;
       if (msg.type === 'MOVE' && typeof msg.index === 'number') {
-        handleMoveRef.current(msg.index, true);
+        handleMove(msg.index, true);
       } else if (msg.type === 'RESET') {
-        resetGameRef.current(true);
+        resetGame(true);
       }
     });
     c.on('close', () => {
