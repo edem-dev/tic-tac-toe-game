@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Peer from 'peerjs';
 import { GameMode, Player, GameState, PeerMessage, Difficulty } from './types';
-import { calculateWinner, getBestMove, getRandomMove } from './services/gameLogic';
+import { calculateWinner, getBestMove, getRandomMove, getMediumMove } from './services/gameLogic';
 import Square from './components/Square';
 
 const App: React.FC = () => {
@@ -26,6 +26,9 @@ const App: React.FC = () => {
   const [targetId, setTargetId] = useState<string>('');
   const [isHost, setIsHost] = useState<boolean>(false);
   const [connected, setConnected] = useState<boolean>(false);
+  const connectedRef = useRef<boolean>(false);
+  useEffect(() => { connectedRef.current = connected; }, [connected]);
+  const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
   const boardRef = useRef<Player[]>(board);
@@ -82,6 +85,7 @@ const App: React.FC = () => {
     c.on('open', () => {
       setConn(c);
       setConnected(true);
+      setIsConnecting(false);
       setMode(GameMode.MULTI_GAME);
       resetGame();
     });
@@ -95,21 +99,36 @@ const App: React.FC = () => {
     });
     c.on('close', () => {
       setConnected(false);
+      setIsConnecting(false);
       setError('Opponent disconnected.');
       setMode(GameMode.MULTI_LOBBY);
       setConn(null);
     });
     c.on('error', (err: any) => {
       console.error('Connection error:', err);
+      setIsConnecting(false);
       setError('Connection lost.');
     });
   };
 
   const connectToPeer = () => {
-    if (!targetId || !peer) return;
+    if (!targetId || !peer || isConnecting) return;
     setIsHost(false);
+    setError('');
+    setIsConnecting(true);
+    
     const connection = peer.connect(targetId);
     setupConnection(connection);
+
+    // Timeout mechanism
+    setTimeout(() => {
+      if (connRef.current) return; // Already connected
+      setIsConnecting(false);
+      if (!connectedRef.current) {
+        connection.close();
+        setError('Connection timed out. Please check the code.');
+      }
+    }, 10000); // 10 seconds timeout
   };
 
   const handleMove = useCallback((i: number, fromRemote: boolean = false) => {
@@ -143,7 +162,14 @@ const App: React.FC = () => {
     if (mode === GameMode.SOLO && !xIsNext && !status.winner) {
       const currentBoard = [...boardRef.current];
       const timeout = setTimeout(() => {
-        const move = difficulty === 'EXPERT' ? getBestMove(currentBoard) : getRandomMove(currentBoard);
+        let move: number;
+        if (difficulty === 'EXPERT') {
+          move = getBestMove(currentBoard);
+        } else if (difficulty === 'MEDIUM') {
+          move = getMediumMove(currentBoard);
+        } else {
+          move = getRandomMove(currentBoard);
+        }
         if (move !== -1 && move !== undefined) handleMove(move);
       }, 600);
       return () => clearTimeout(timeout);
@@ -241,9 +267,15 @@ const App: React.FC = () => {
           />
           <button 
             onClick={connectToPeer}
-            className="w-full p-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-lg transition-all"
+            disabled={isConnecting}
+            className={`w-full p-3 font-bold rounded-lg transition-all ${isConnecting ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
           >
-            Connect & Play
+            {isConnecting ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                Connecting...
+              </div>
+            ) : "Connect & Play"}
           </button>
         </div>
         {error && <p className="text-red-400 text-sm text-center">{error}</p>}
@@ -272,6 +304,12 @@ const App: React.FC = () => {
                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${difficulty === 'EASY' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                >
                  Easy
+               </button>
+               <button 
+                onClick={() => setDifficulty('MEDIUM')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${difficulty === 'MEDIUM' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+               >
+                 Medium
                </button>
                <button 
                 onClick={() => setDifficulty('EXPERT')}

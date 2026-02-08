@@ -8,7 +8,7 @@ export enum GameMode {
   MULTI_GAME = 'MULTI_GAME'
 }
 
-export type Difficulty = 'EASY' | 'EXPERT';
+export type Difficulty = 'EASY' | 'MEDIUM' | 'EXPERT';
 
 export interface GameState {
   board: Player[];

@@ -74,3 +74,8 @@ export const getRandomMove = (board: Player[]): number => {
   const availableMoves = board.map((val, idx) => (val === null ? idx : null)).filter((val) => val !== null) as number[];
   return availableMoves[Math.floor(Math.random() * availableMoves.length)];
 };
+
+export const getMediumMove = (board: Player[]): number => {
+  // 50% chance of best move, 50% random
+  return Math.random() > 0.5 ? getBestMove(board) : getRandomMove(board);
+};
