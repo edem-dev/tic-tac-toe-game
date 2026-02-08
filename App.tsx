@@ -70,7 +70,14 @@ const App: React.FC = () => {
         shortId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
       }
       
-      const p = new Peer(shortId);
+      const p = new Peer(shortId, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ]
+        }
+      });
       p.on('open', (id: string) => setMyId(id));
       p.on('connection', (connection: any) => {
         if (connRef.current) {
@@ -102,6 +109,9 @@ const App: React.FC = () => {
     c.on('data', (data: any) => {
       const msg = data as PeerMessage;
       if (msg.type === 'MOVE' && typeof msg.index === 'number') {
+        // Log received move for debugging
+        console.log('Received move:', msg.index);
+        
         // Double check it's actually the opponent's turn when receiving a move
         const currentTurnSymbol = boardRef.current.filter(Boolean).length % 2 === 0 ? 'X' : 'O';
         const opponentSymbol = isHostRef.current ? 'O' : 'X';
@@ -109,6 +119,8 @@ const App: React.FC = () => {
         // We only accept the move if it's the opponent's turn
         if (currentTurnSymbol === opponentSymbol) {
           handleMove(msg.index, true);
+        } else {
+          console.warn('Received move out of turn:', msg.index, 'Expected turn for:', opponentSymbol, 'Current turn:', currentTurnSymbol);
         }
       } else if (msg.type === 'RESET') {
         resetGame(true);
@@ -149,20 +161,24 @@ const App: React.FC = () => {
   };
 
   const handleMove = useCallback((i: number, fromRemote: boolean = false) => {
-    const currentWinner = calculateWinner(boardRef.current).winner;
-    if (currentWinner || boardRef.current[i]) return;
+    // Check winner based on current board state
+    const currentResult = calculateWinner(boardRef.current);
+    if (currentResult.winner || boardRef.current[i]) return;
 
     if (mode === GameMode.MULTI_GAME && !fromRemote) {
       const mySymbol = isHost ? 'X' : 'O';
-      const currentTurnSymbol = xIsNext ? 'X' : 'O';
-      if (mySymbol !== currentTurnSymbol) return;
-      if (conn) conn.send({ type: 'MOVE', index: i });
+      // Use the helper to determine whose turn it is
+      const nextToPlay = boardRef.current.filter(Boolean).length % 2 === 0 ? 'X' : 'O';
+      if (mySymbol !== nextToPlay) return;
+      if (conn) {
+        console.log('Sending move:', i);
+        conn.send({ type: 'MOVE', index: i });
+      }
     }
 
     setBoard(prev => {
       const newBoard = [...prev];
-      // Determine the symbol based on who's turn it actually is
-      // This prevents "XXS" issue if xIsNext gets out of sync
+      // Determine the symbol based on current pieces on the board
       const symbol = newBoard.filter(Boolean).length % 2 === 0 ? 'X' : 'O';
       newBoard[i] = symbol;
       
