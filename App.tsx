@@ -4,6 +4,7 @@ import Peer from 'peerjs';
 import { GameMode, Player, GameState, PeerMessage, Difficulty } from './types';
 import { calculateWinner, getBestMove, getRandomMove, getMediumMove } from './services/gameLogic';
 import Square from './components/Square';
+import { X, Circle, Copy, Share2, AlertCircle } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation State
@@ -25,6 +26,8 @@ const App: React.FC = () => {
   const [myId, setMyId] = useState<string>('');
   const [targetId, setTargetId] = useState<string>('');
   const [isHost, setIsHost] = useState<boolean>(false);
+  const isHostRef = useRef<boolean>(false);
+  useEffect(() => { isHostRef.current = isHost; }, [isHost]);
   const [connected, setConnected] = useState<boolean>(false);
   const connectedRef = useRef<boolean>(false);
   useEffect(() => { connectedRef.current = connected; }, [connected]);
@@ -99,7 +102,14 @@ const App: React.FC = () => {
     c.on('data', (data: any) => {
       const msg = data as PeerMessage;
       if (msg.type === 'MOVE' && typeof msg.index === 'number') {
-        handleMove(msg.index, true);
+        // Double check it's actually the opponent's turn when receiving a move
+        const currentTurnSymbol = boardRef.current.filter(Boolean).length % 2 === 0 ? 'X' : 'O';
+        const opponentSymbol = isHostRef.current ? 'O' : 'X';
+        
+        // We only accept the move if it's the opponent's turn
+        if (currentTurnSymbol === opponentSymbol) {
+          handleMove(msg.index, true);
+        }
       } else if (msg.type === 'RESET') {
         resetGame(true);
       }
@@ -151,19 +161,22 @@ const App: React.FC = () => {
 
     setBoard(prev => {
       const newBoard = [...prev];
-      newBoard[i] = xIsNext ? 'X' : 'O';
+      // Determine the symbol based on who's turn it actually is
+      // This prevents "XXS" issue if xIsNext gets out of sync
+      const symbol = newBoard.filter(Boolean).length % 2 === 0 ? 'X' : 'O';
+      newBoard[i] = symbol;
       
       const result = calculateWinner(newBoard);
       setStatus({
         board: newBoard,
-        xIsNext: !xIsNext,
+        xIsNext: symbol === 'X' ? false : true,
         winner: result.winner,
         winningLine: result.line
       });
       return newBoard;
     });
     setXIsNext(prev => !prev);
-  }, [mode, isHost, conn, xIsNext]);
+  }, [mode, isHost, conn]);
 
   useEffect(() => {
     if (mode === GameMode.SOLO && !xIsNext && !status.winner) {
@@ -248,10 +261,11 @@ const App: React.FC = () => {
             {myId || "Generating..."}
           </div>
           <button 
-            onClick={() => { navigator.clipboard.writeText(myId); alert("Copied!"); }}
+            onClick={() => { navigator.clipboard.writeText(myId); }}
             className="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+            title="Copy Code"
           >
-            📋
+            <Copy size={20} className="text-indigo-400" />
           </button>
         </div>
         <p className="text-xs text-slate-500 animate-pulse">Waiting for opponent to join...</p>
@@ -352,11 +366,11 @@ const App: React.FC = () => {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-xl transition-all duration-300 ${xIsNext ? 'bg-indigo-500/20 text-indigo-400 scale-110 ring-2 ring-indigo-500/50' : 'bg-slate-800 text-slate-500 opacity-50'}`}>
-                  <span className="text-2xl font-black">X</span>
+                  <X size={24} strokeWidth={3} />
                 </div>
                 <div className="h-0.5 w-8 bg-slate-800 rounded-full"></div>
                 <div className={`p-3 rounded-xl transition-all duration-300 ${!xIsNext ? 'bg-emerald-500/20 text-emerald-400 scale-110 ring-2 ring-emerald-500/50' : 'bg-slate-800 text-slate-500 opacity-50'}`}>
-                  <span className="text-2xl font-black">O</span>
+                  <Circle size={20} strokeWidth={3} />
                 </div>
               </div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
