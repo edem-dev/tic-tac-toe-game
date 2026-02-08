@@ -60,7 +60,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (mode === GameMode.MULTI_LOBBY && !peer) {
-      const p = new Peer();
+      // Use a custom alphabet to avoid confusing characters like 0, O, 1, I, l
+      const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      let shortId = '';
+      for (let i = 0; i < 6; i++) {
+        shortId += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+      }
+      
+      const p = new Peer(shortId);
       p.on('open', (id: string) => setMyId(id));
       p.on('connection', (connection: any) => {
         if (connRef.current) {
@@ -261,9 +268,9 @@ const App: React.FC = () => {
           <input 
             type="text" 
             placeholder="Enter friend's code..." 
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors uppercase"
             value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
+            onChange={(e) => setTargetId(e.target.value.toUpperCase())}
           />
           <button 
             onClick={connectToPeer}
