@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Peer from 'peerjs';
 import { GameMode, Player, GameState, PeerMessage, Difficulty } from './types';
 import { calculateWinner, getBestMove, getRandomMove } from './services/gameLogic';
 import Square from './components/Square';
-
-declare var Peer: any;
 
 const App: React.FC = () => {
   // Navigation State
@@ -56,23 +55,28 @@ const App: React.FC = () => {
     setDeferredPrompt(null);
   };
 
-  // PeerJS Setup
   useEffect(() => {
     if (mode === GameMode.MULTI_LOBBY && !peer) {
       const p = new Peer();
       p.on('open', (id: string) => setMyId(id));
       p.on('connection', (connection: any) => {
-        if (conn) {
+        if (connRef.current) {
           connection.close();
           return;
         }
         setIsHost(true);
         setupConnection(connection);
       });
-      p.on('error', (err: any) => setError(err.type === 'peer-not-found' ? 'Peer not found.' : 'Connection error.'));
+      p.on('error', (err: any) => {
+        console.error('Peer error:', err);
+        setError(err.type === 'peer-not-found' ? 'Peer not found.' : 'Connection error.');
+      });
       setPeer(p);
     }
   }, [mode, peer]);
+
+  const connRef = useRef<any>(null);
+  useEffect(() => { connRef.current = conn; }, [conn]);
 
   const setupConnection = (c: any) => {
     c.on('open', () => {
@@ -81,10 +85,11 @@ const App: React.FC = () => {
       setMode(GameMode.MULTI_GAME);
       resetGame();
     });
-    c.on('data', (data: PeerMessage) => {
-      if (data.type === 'MOVE' && typeof data.index === 'number') {
-        handleMove(data.index, true);
-      } else if (data.type === 'RESET') {
+    c.on('data', (data: any) => {
+      const msg = data as PeerMessage;
+      if (msg.type === 'MOVE' && typeof msg.index === 'number') {
+        handleMove(msg.index, true);
+      } else if (msg.type === 'RESET') {
         resetGame(true);
       }
     });
@@ -93,6 +98,10 @@ const App: React.FC = () => {
       setError('Opponent disconnected.');
       setMode(GameMode.MULTI_LOBBY);
       setConn(null);
+    });
+    c.on('error', (err: any) => {
+      console.error('Connection error:', err);
+      setError('Connection lost.');
     });
   };
 
@@ -114,30 +123,32 @@ const App: React.FC = () => {
       if (conn) conn.send({ type: 'MOVE', index: i });
     }
 
-    const newBoard = [...boardRef.current];
-    newBoard[i] = xIsNext ? 'X' : 'O';
-    
-    setBoard(newBoard);
-    setXIsNext(!xIsNext);
-
-    const result = calculateWinner(newBoard);
-    setStatus({
-      board: newBoard,
-      xIsNext: !xIsNext,
-      winner: result.winner,
-      winningLine: result.line
+    setBoard(prev => {
+      const newBoard = [...prev];
+      newBoard[i] = xIsNext ? 'X' : 'O';
+      
+      const result = calculateWinner(newBoard);
+      setStatus({
+        board: newBoard,
+        xIsNext: !xIsNext,
+        winner: result.winner,
+        winningLine: result.line
+      });
+      return newBoard;
     });
-  }, [xIsNext, mode, isHost, conn]);
+    setXIsNext(prev => !prev);
+  }, [mode, isHost, conn, xIsNext]);
 
   useEffect(() => {
     if (mode === GameMode.SOLO && !xIsNext && !status.winner) {
+      const currentBoard = [...boardRef.current];
       const timeout = setTimeout(() => {
-        const move = difficulty === 'EXPERT' ? getBestMove(board) : getRandomMove(board);
-        if (move !== -1) handleMove(move);
+        const move = difficulty === 'EXPERT' ? getBestMove(currentBoard) : getRandomMove(currentBoard);
+        if (move !== -1 && move !== undefined) handleMove(move);
       }, 600);
       return () => clearTimeout(timeout);
     }
-  }, [xIsNext, mode, difficulty, status.winner, board, handleMove]);
+  }, [xIsNext, mode, difficulty, status.winner, handleMove]);
 
   const resetGame = (fromRemote: boolean = false) => {
     const newBoard = Array(9).fill(null);

@@ -1,11 +1,11 @@
 
 const CACHE_NAME = 'ticky-v1';
 const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/index.css',
+  'https://cdn-icons-png.flaticon.com/512/1021/1021264.png'
 ];
 
 self.addEventListener('install', (event) => {
