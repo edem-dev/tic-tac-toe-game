@@ -1,6 +1,6 @@
 {
   "name": "Ticky",
-  "description": "A feature-rich Tic-Tac-Toe application featuring an unbeatable Minimax AI, real-time multiplayer matchmaking via WebRTC, and a sleek modern UI.",
+  "description": "A feature-rich Ticky application featuring an unbeatable Minimax AI, real-time multiplayer matchmaking via WebRTC, and a sleek modern UI.",
   "requestFramePermissions": [
     "camera",
     "microphone"
