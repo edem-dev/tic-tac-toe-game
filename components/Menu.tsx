@@ -19,7 +19,7 @@ const Menu: React.FC<MenuProps> = ({
       <div className="text-center space-y-2">
         <h1 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">TICKY
         </h1>
-        <p className="text-slate-400 font-medium">Modern Classic Challenge</p>
+        <p className="text-slate-400 font-medium">Modern Classic Tic-Tac-Toe Challenge</p>
       </div>
 
       <div className="grid grid-cols-1 w-full gap-4">
